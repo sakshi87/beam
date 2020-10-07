@@ -179,7 +179,7 @@ jobs:
         name: wheelhouse-${{ matrix.os_python.os }}
         path: apache-beam-source/wheelhouse/
 
-manylinux-arm64:
+  manylinux-arm64:
     name: Build python wheels on ${{ matrix.os_python.os }}
     needs: build_source
     runs-on: ubuntu-latest
