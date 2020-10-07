@@ -198,8 +198,6 @@ jobs:
               bash -c "set -xe;
               mkdir -p /github/home/.cache/pip;
               chown -R $(whoami) /github/home/.cache;
-              which python
-              /opt/python/${{ 3.8 }}/bin/python -m venv .venv;
               .venv/bin/pip install -U pip cibuildwheel==1.4.2 cython;
               cibuildwheel --print-build-identifiers && cibuildwheel --output-dir wheelhouse
               sha512sum $file > ${file}.sha512
