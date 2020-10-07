@@ -6,7 +6,6 @@
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
 #
-#
 #   http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
@@ -180,6 +179,48 @@ jobs:
         name: wheelhouse-${{ matrix.os_python.os }}
         path: apache-beam-source/wheelhouse/
 
+manylinux-arm64:
+    name: Build python wheels on ${{ matrix.os_python.os }}
+    needs: build_source
+    runs-on: ubuntu-latest
+    strategy:
+       matrix:
+        os_python: [
+          {"os": "ubuntu-latest", "python": "cp36-* cp37-* cp38-*"},
+        ]
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          docker run --rm --privileged hypriot/qemu-register
+      - uses: docker://quay.io/pypa/manylinux2014_aarch64
+        # The weird pip cache nonsense below is due to docker ownership issues. We want
+        # a cache because otherwise we end up building cffi twice.
+      - name: Install Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Install cibuildwheel
+        run: pip install cibuildwheel==1.4.2
+      - name: Build wheel
+        working-directory: apache-beam-source
+        env:
+          CIBW_BUILD: ${{ matrix.os_python.python }}
+          CIBW_BEFORE_BUILD: pip install cython
+        run: cibuildwheel --print-build-identifiers && cibuildwheel --output-dir wheelhouse
+        shell: bash
+      - name: Add checksums
+        working-directory: apache-beam-source/wheelhouse/
+        run: |
+          for file in *.whl; do
+            sha512sum $file > ${file}.sha512
+          done
+        shell: bash
+      - name: Upload wheels as artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheelhouse-${{ matrix.os_python.os }}
+          path: apache-beam-source/wheelhouse/
+          
   upload_wheels_to_gcs:
     name: Upload wheels to GCS bucket
     needs:
