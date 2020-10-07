@@ -193,9 +193,7 @@ manylinux-arm64:
       - run: |
           docker run --rm --privileged hypriot/qemu-register
       - uses: docker://quay.io/pypa/manylinux2014_aarch64
-        # The weird pip cache nonsense below is due to docker ownership issues. We want
-        # a cache because otherwise we end up building cffi twice.
-      with:
+        with:
           args: |
               bash -c "set -xe;
               mkdir -p /github/home/.cache/pip;
