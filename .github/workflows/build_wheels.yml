@@ -180,7 +180,7 @@ jobs:
         path: apache-beam-source/wheelhouse/
 
   manylinux-arm64:
-    name: Build python wheels on ${{ matrix.os_python.os }}
+    name: Aarcht64 Build python wheels on ${{ matrix.PYTHON }}
     needs: build_source
     runs-on: ubuntu-latest
     strategy:
@@ -196,11 +196,14 @@ jobs:
               bash -c "set -xe;
               mkdir -p /github/home/.cache/pip;
               chown -R $(whoami) /github/home/.cache;
+              #cd sdks/python;
+              yum install -y docker;
               /opt/python/${{ matrix.PYTHON }}/bin/pip install virtualenv;
               /opt/python/${{ matrix.PYTHON }}/bin/python -m virtualenv .venv;
               .venv/bin/pip install -U pip cibuildwheel==1.4.2 cython;
-              find / -iname cibuildwheel
-              cibuildwheel --print-build-identifiers && cibuildwheel --output-dir wheelhouse;
+              pwd;
+              ls;
+              .venv/bin/cibuildwheel --print-build-identifiers && .venv/bin/cibuildwheel --output-dir wheelhouse;
               sha512sum $file > ${file}.sha512;
           
   upload_wheels_to_gcs:
