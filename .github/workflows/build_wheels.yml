@@ -199,8 +199,6 @@ jobs:
             echo ::set-output name=uname::$(uname -m)
       - name: Build python wheels on ${{ matrix.os_python.os }}
         run: pip install cibuildwheel==1.4.2 cython
-      - name: path is
-        run: which cibuildwheel
       - name: Build wheel
         run: pwd
       - name: current location
