@@ -180,31 +180,39 @@ jobs:
         path: apache-beam-source/wheelhouse/
 
   manylinux-arm64:
-    name: Aarcht64 Build python wheels on ${{ matrix.PYTHON }}
+    name: Aarch64 Build python wheels on ${{ matrix.PYTHON }}
     needs: build_source
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
        matrix:
         PYTHON: ["cp36-*", "cp37-*", "cp38-*"]
     steps:
       - uses: actions/checkout@v2
-      - run: |
-          docker run --rm --privileged hypriot/qemu-register
-      - uses: docker://quay.io/pypa/manylinux2014_aarch64
+      - uses: uraimo/run-on-arch-action@v2.0.5
+        name: Run commands
+        id: runcmd
         with:
-          args: |
-              bash -c "set -xe;
-              mkdir -p /github/home/.cache/pip;
-              chown -R $(whoami) /github/home/.cache;
-              #cd sdks/python;
-              yum install -y docker;
-              /opt/python/${{ matrix.PYTHON }}/bin/pip install virtualenv;
-              /opt/python/${{ matrix.PYTHON }}/bin/python -m virtualenv .venv;
-              .venv/bin/pip install -U pip cibuildwheel==1.4.2 cython;
-              pwd;
-              ls;
-              .venv/bin/cibuildwheel --print-build-identifiers && .venv/bin/cibuildwheel --output-dir wheelhouse;
-              sha512sum $file > ${file}.sha512;
+          arch: aarch64
+          distro: ubuntu20.04
+          run: |
+            uname -m
+            echo ::set-output name=uname::$(uname -m)
+      - name: Build python wheels on ${{ matrix.os_python.os }}
+        run: pip install cibuildwheel==1.4.2 cython
+      - name: Build wheel
+        run: cibuildwheel --print-build-identifiers && cibuildwheel --output-dir wheelhouse
+      - name: Add checksums
+        working-directory: apache-beam-source/wheelhouse/
+        run: |
+          for file in *.whl; do
+            sha512sum $file > ${file}.sha512
+          done
+        shell: bash
+      - name: Upload wheels as artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheelhouse-${{ matrix.os_python.os }}
+          path: apache-beam-source/wheelhouse/
           
   upload_wheels_to_gcs:
     name: Upload wheels to GCS bucket
