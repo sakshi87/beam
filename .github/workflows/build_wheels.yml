@@ -199,6 +199,8 @@ jobs:
             echo ::set-output name=uname::$(uname -m)
       - name: Build python wheels on ${{ matrix.os_python.os }}
         run: pip install cibuildwheel==1.4.2 cython
+      - name: move to setup
+        run: cd sdks/python
       - name: final command
         run: /home/runner/.local/bin/cibuildwheel --print-build-identifiers && cibuildwheel --output-dir wheelhouse
       - name: Add checksums
