@@ -227,14 +227,16 @@ jobs:
         with:
           args: |
               bash -c "pyver=python${{ matrix.python-version }};
-              $pyver -m pip install -r build-requirements.txt
-              $pyver -m pip install wheel
-              cd sdks/python
-              $pyver setup.py sdist --formats=zip
-              file=$(ls | grep .zip | head -n 1)
-              sha512sum $file > ${file}.sha512
-              unzip dist/$(ls dist | grep .zip | head -n 1)
-              mv $(ls | grep apache-beam) apache-beam-source
+              apt-get update -qq;
+              apt-get install -qq coreutils $pyver python3-pip lib$pyver-dev;
+              $pyver -m pip install -r build-requirements.txt;
+              $pyver -m pip install wheel;
+              cd sdks/python;
+              $pyver setup.py sdist --formats=zip;
+              file=$(ls | grep .zip | head -n 1);
+              sha512sum $file > ${file}.sha512;
+              unzip dist/$(ls dist | grep .zip | head -n 1);
+              mv $(ls | grep apache-beam) apache-beam-source;
       - uses: docker://quay.io/pypa/manylinux2014_aarch64
         with:
           args: |
