@@ -182,41 +182,76 @@ jobs:
   manylinux-arm64:
     name: Aarch64 Build python wheels on ${{ matrix.PYTHON }}
     needs: build_source
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
        matrix:
-        PYTHON: ["cp36-*", "cp37-*", "cp38-*"]
+         python-version:
+           - "3.6"
+           - "3.7"
+           - "3.8"
     steps:
       - uses: actions/checkout@v2
-      - uses: uraimo/run-on-arch-action@v2.0.5
-        name: Run commands
-        id: runcmd
-        with:
-          arch: aarch64
-          distro: ubuntu20.04
-          run: |
-            uname -m
-            echo ::set-output name=uname::$(uname -m)
-      - name: final command
-        run: |
-          pip install cibuildwheel==1.4.2 cython
-          cd sdks/python
-          /home/runner/.local/bin/cibuildwheel --print-build-identifiers && cibuildwheel --output-dir wheelhouse
+      - name: "Check are GCP variables set"
+        run: "./scripts/ci/ci_check_are_gcp_variables_set.sh"
+        id: check_gcp_variables
         env:
-          CIBW_BUILD: cp37-* cp38-*
-          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux2014
-      - name: Add checksums
-        working-directory: apache-beam-source/wheelhouse/
-        run: |
-          for file in *.whl; do
-            sha512sum $file > ${file}.sha512
-          done
-        shell: bash
-      - name: Upload wheels as artifacts
-        uses: actions/upload-artifact@v2
+          GCP_SA_EMAIL: ${{ secrets.GCP_SA_EMAIL }}
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          GCP_PYTHON_WHEELS_BUCKET: ${{ secrets.GCP_PYTHON_WHEELS_BUCKET }}
+          GCP_PROJECT_ID: "not-needed-here"
+          GCP_REGION: "not-needed-here"
+          GCP_TESTING_BUCKET: "not-needed-here" 
+      - name: Authenticate on GCP
+        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
         with:
-          name: wheelhouse-${{ matrix.os_python.os }}
-          path: apache-beam-source/wheelhouse/
+          service_account_email: ${{ secrets.GCP_SA_EMAIL }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+      - name: Remove existing files on GCS bucket
+        run: gsutil rm -r ${{ env.GCP_PATH }} || true
+      - name: Download compressed sources from artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: source_zip
+          path: source/
+      - name: Authenticate on GCP
+        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          service_account_email: ${{ secrets.GCP_SA_EMAIL }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+      - name: Copy sources to GCS bucket
+        run: gsutil cp -r -a public-read source/* ${{ env.GCP_PATH }}
+      - uses: actions/checkout@v2
+      - name: Enable qemu 
+        run: |
+            docker run --rm --privileged hypriot/qemu-register
+      - name: Run tests 
+        uses: docker://arm64v8/ubuntu:bionic
+        with:
+          args: |
+              bash -c "pyver=python${{ matrix.python-version }};
+              $pyver -m pip install -r build-requirements.txt
+              $pyver -m pip install wheel
+              cd sdks/python
+              $pyver setup.py sdist --formats=zip
+              file=$(ls | grep .zip | head -n 1)
+              sha512sum $file > ${file}.sha512
+              unzip dist/$(ls dist | grep .zip | head -n 1)
+              mv $(ls | grep apache-beam) apache-beam-source
+      - uses: docker://quay.io/pypa/manylinux2014_aarch64
+        with:
+          args: |
+              bash -c "set -xe;
+              mkdir -p /github/home/.cache/pip;
+              chown -R $(whoami) /github/home/.cache;
+              #cd sdks/python;
+              yum install -y docker;
+              /opt/python/${{ matrix.PYTHON }}/bin/pip install virtualenv;
+              /opt/python/${{ matrix.PYTHON }}/bin/python -m virtualenv .venv;
+              .venv/bin/pip install -U pip cibuildwheel==1.4.2 cython;
+              pwd;
+              ls;
+              .venv/bin/cibuildwheel --print-build-identifiers && .venv/bin/cibuildwheel --output-dir wheelhouse;
+              sha512sum $file > ${file}.sha512;
           
   upload_wheels_to_gcs:
     name: Upload wheels to GCS bucket
