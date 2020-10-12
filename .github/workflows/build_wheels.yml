@@ -229,9 +229,9 @@ jobs:
               bash -c "pyver=python${{ matrix.python-version }};
               apt-get update -qq;
               apt-get install -qq coreutils $pyver python3-pip lib$pyver-dev;
+              cd sdks/python;
               $pyver -m pip install -r build-requirements.txt;
               $pyver -m pip install wheel;
-              cd sdks/python;
               $pyver setup.py sdist --formats=zip;
               file=$(ls | grep .zip | head -n 1);
               sha512sum $file > ${file}.sha512;
