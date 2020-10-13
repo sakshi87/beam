@@ -229,6 +229,7 @@ jobs:
               bash -c "pyver=python${{ matrix.python-version }};
               apt-get update -qq;
               apt-get install -qq coreutils $pyver python3-pip lib$pyver-dev;
+              apt-get install -y unzip;
               cd sdks/python;
               $pyver -m pip install -r build-requirements.txt;
               $pyver -m pip install wheel;
